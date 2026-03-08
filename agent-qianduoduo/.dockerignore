@@ -3,6 +3,7 @@ __pycache__/
 .docker/
 .git/
 .gitignore
+.env*
 reviews/
 week/
 red/
