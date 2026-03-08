@@ -1,0 +1,45 @@
+# docker-compose.yml - 编排 openclaw + agent-qianduoduo
+# 🔧 OpenClaw 网关端口：12131（避免与默认端口冲突）
+
+version: '3.8'
+
+services:
+  openclaw:
+    image: openclaw/openclaw:latest
+    container_name: openclaw-gateway
+    ports:
+      - "12131:12131"  # 自定义网关端口
+    volumes:
+      - openclaw-data:/openclaw/data
+      - /var/run/docker.sock:/var/run/docker.sock  # 允许管理其他容器
+    env_file:
+      - .env.openclaw
+    command: >
+      openclaw gateway start
+        --port 12131
+        --docker-host unix:///var/run/docker.sock
+    restart: unless-stopped
+    privileged: true  # 允许容器管理其他容器
+
+  qianduoduo:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: qianduoduo:latest
+    container_name: qianduoduo-quant
+    volumes:
+      - qianduoduo-data:/app/qianduoduo/data
+      - ./skills:/app/qianduoduo/skills
+      - ./AGENTS.md:/app/qianduoduo/AGENTS.md
+      - ./TOOLS.md:/app/qianduoduo/TOOLS.md
+      - ./permission:/app/qianduoduo/permission
+    env_file:
+      - .env.qianduoduo
+    depends_on:
+      - openclaw
+    network_mode: service:openclaw  # 共享网络栈（通过 localhost:12131 访问 gateway）
+    restart: unless-stopped
+
+volumes:
+  openclaw-data:
+  qianduoduo-data:

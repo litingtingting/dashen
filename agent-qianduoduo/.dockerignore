@@ -1,0 +1,12 @@
+__pycache__/
+*.pyc
+.docker/
+.git/
+.gitignore
+reviews/
+week/
+red/
+*.md
+!AGENTS.md
+!TOOLS.md
+permission/agent_code_of_conduct.md
