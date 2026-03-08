@@ -1,37 +1,33 @@
-FROM python:3.11-slim-alpine
+# Dockerfile for 钱多多 (qian-duoduo) Agent
+# 使用国内镜像源加速构建
+
+# 第一阶段：构建环境（使用 Alpine + Python）
+FROM alpine:3.19
 
 WORKDIR /app/qianduoduo
 
-# 使用国内镜像源加速
-RUN sed -i 's/dl-cdn.alpinelinux.org/mirrors.aliyun.com/' /etc/apk/repositories
+# 使用阿里云镜像源加速
+RUN sed -i 's/dl-cdn.alpinelinux.org/mirrors.aliyun.com/' /etc/apk/repositories && \
+    apk add --no-cache python3 py3-pip py3-openssl py3-requests curl && \
+    pip3 config set global.index-url https://pypi.tuna.tsinghua.edu.cn/simple
 
-RUN apk add --no-cache \
-    gcc \
-    musl-dev \
-    libffi-dev \
-    openssl-dev \
-    libwebsockets-dev \
-    curl \
-    && rm -rf /var/cache/apk/*
-
-# pip 国内源加速
-RUN pip config set global.index-url https://pypi.tuna.tsinghua.edu.cn/simple
-
-RUN pip install --no-cache-dir \
+# 安装依赖
+RUN pip3 install --no-cache-dir \
     websocket-client>=1.6.0 \
-    tushare \
-    requests \
-    && pip cache purge
+    && pip3 cache purge
 
+# 复制代码
 COPY skills/ ./skills/
 COPY AGENTS.md ./AGENTS.md
 COPY TOOLS.md ./TOOLS.md
 COPY permission/ ./permission/
 
+# 创建非 root 用户
 RUN adduser -D -g '' qianbot && \
     chown -R qianbot:qianbot /app/qianduoduo
 USER qianbot
 
+# 启动脚本
 COPY entrypoint.sh /entrypoint.sh
 RUN chmod +x /entrypoint.sh
 
