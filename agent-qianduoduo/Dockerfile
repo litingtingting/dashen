@@ -27,8 +27,7 @@ RUN adduser -D -g '' qianbot && \
     chown -R qianbot:qianbot /app/qianduoduo
 USER qianbot
 
-# 启动脚本
-COPY entrypoint.sh /entrypoint.sh
-RUN chmod +x /entrypoint.sh
+# 启动脚本（COPY 时自动保留执行权限）
+COPY --chmod=755 entrypoint.sh /entrypoint.sh
 
 ENTRYPOINT ["/entrypoint.sh"]
