@@ -23,6 +23,6 @@ echo ""
 if [ $# -gt 0 ]; then
     exec "$@"
 else
-    echo "Usage: docker run -it qian-duoduo [python script.py]"
+    echo "Usage: docker run -it qianduoduo [python script.py]"
     exec /bin/sh
 fi

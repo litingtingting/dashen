@@ -132,21 +132,21 @@ BRAVE_API_KEY=your_brave_api_key_here
 
 ```bash
 # 在 dashen/ 目录下
-docker build -t qian-duoduo:latest .
+docker build -t qianduoduo:latest .
 ```
 
 > ⏱️ **首次构建时间**：5-10 分钟（下载基础镜像 + 安装依赖）
 > 
-> ✅ 成功标志：`Successfully built xxx` + `Successfully tagged qian-duoduo:latest`
+> ✅ 成功标志：`Successfully built xxx` + `Successfully tagged qianduoduo:latest`
 
 ### 步骤 5：运行测试
 
 ```bash
 # 交互模式（调试用）
-docker run -it --env-file .env qian-duoduo:latest
+docker run -it --env-file .env qianduoduo:latest
 
 # 或直接运行预制分析脚本
-docker run --env-file .env qian-duoduo:latest python skills/pre_market_analysis.py
+docker run --env-file .env qianduoduo:latest python skills/pre_market_analysis.py
 ```
 
 > 🎯 **预期输出**：
@@ -166,7 +166,7 @@ docker run --env-file .env qian-duoduo:latest python skills/pre_market_analysis.
 ### 方式 1：交互式调试
 
 ```bash
-docker run -it --env-file .env qian-duoduo:latest /bin/sh
+docker run -it --env-file .env qianduoduo:latest /bin/sh
 
 # 进入容器后测试
 python -c "import websocket; print('✅ websocket-client OK')"
@@ -176,10 +176,10 @@ python -c "import websocket; print('✅ websocket-client OK')"
 
 ```bash
 # 早盘分析
-docker run --env-file .env qian-duoduo:latest python skills/pre_market_analysis.py
+docker run --env-file .env qianduoduo:latest python skills/pre_market_analysis.py
 
 # 美股盯盘
-docker run --env-file .env qian-duoduo:latest python skills/us_market_monitor.py
+docker run --env-file .env qianduoduo:latest python skills/us_market_monitor.py
 ```
 
 ---
@@ -235,7 +235,7 @@ docker-compose logs -f
 ping api.itick.io
 
 # 或使用代理
-docker build --network=host -t qian-duoduo:latest .
+docker build --network=host -t qianduoduo:latest .
 ```
 
 ### Q2：找不到 `ITICK_TOKEN`
