@@ -1,91 +1,132 @@
-# docker-compose.yml - 生产级安全加固版
-# 🔧 OpenClaw 网关端口：12131（避免与默认端口冲突）
-# ✅ 安全特性：无特权模式、资源限制、只读根文件系统、非root用户、能力最小化、网络隔离、日志限制
+# docker-compose.yml - OpenClaw 网关 + CLI + 自定义智能体 qianduoduo (跨目录引用)
+# 基于官方 docker-setup.sh 生成，增加了安全加固、资源限制和内部网络
 
 networks:
-  # 创建内部隔离网络，容器间通过服务名通信，避免共享网络栈带来的风险
+  # 自定义内部网络，容器间通过服务名通信
   internal-net:
     driver: bridge
-    internal: false   # 设为 true 可完全禁止出站外网（如需要）
+    internal: false                     # 允许容器访问外网（如调用飞书/百炼 API）
     ipam:
       config:
         - subnet: 172.20.0.0/24
 
 services:
-  openclaw:
-    image: ghcr.io/openclaw/openclaw:latest
+  openclaw-gateway:
+    image: ${OPENCLAW_IMAGE:-openclaw:local}
     container_name: openclaw-gateway
     restart: unless-stopped
     networks:
-      - internal-net
+      - internal-net                    # 加入内部网络
     ports:
-      - "12131:12131"          # 暴露给宿主机（如有需要），若仅内部使用可移除
-    volumes:
-      # 数据卷：持久化数据，使用命名卷便于复用和权限管理
-      - openclaw-data:/openclaw/data
-      # Docker 套接字（高风险，仅当必须管理其他容器时挂载）
-      - /var/run/docker.sock:/var/run/docker.sock:ro   # 改为只读挂载，降低风险
-    env_file:
-      - .env.openclaw
+      - "${OPENCLAW_GATEWAY_PORT:-18789}:18789"
+      - "${OPENCLAW_BRIDGE_PORT:-18790}:18790"
     environment:
-      # 限制 JVM 内存（如果 OpenClaw 基于 Java）
-      - JAVA_OPTS=-Xms512m -Xmx1g
-    command: >
-      openclaw gateway start
-        --port 12131
-        --docker-host unix:///var/run/docker.sock
-    # 安全加固配置
-    user: "1000:1000"                     # 以非 root 用户运行（假设镜像支持）
+      HOME: /home/node
+      TERM: xterm-256color
+      OPENCLAW_GATEWAY_TOKEN: ${OPENCLAW_GATEWAY_TOKEN:-}
+      OPENCLAW_ALLOW_INSECURE_PRIVATE_WS: ${OPENCLAW_ALLOW_INSECURE_PRIVATE_WS:-}
+      CLAUDE_AI_SESSION_KEY: ${CLAUDE_AI_SESSION_KEY:-}
+      CLAUDE_WEB_SESSION_KEY: ${CLAUDE_WEB_SESSION_KEY:-}
+      CLAUDE_WEB_COOKIE: ${CLAUDE_WEB_COOKIE:-}
+    volumes:
+      - ${OPENCLAW_CONFIG_DIR}:/home/node/.openclaw
+      - ${OPENCLAW_WORKSPACE_DIR}:/home/node/.openclaw/workspace
+      ## 如需启用沙箱，取消以下注释并设置 DOCKER_GID
+      # - /var/run/docker.sock:/var/run/docker.sock
+    # group_add:
+    #   - "${DOCKER_GID:-999}"
+    command:
+      - "node"
+      - "dist/index.js"
+      - "gateway"
+      - "--bind"
+      - "${OPENCLAW_GATEWAY_BIND:-lan}"
+      - "--port"
+      - "18789"
+    # 安全加固
+    user: "1000:1000"                    # 以 node 用户运行（UID 1000）
     read_only: true                       # 根文件系统只读
     tmpfs:
-      - /tmp:rw,noexec,nosuid,size=256M   # 临时可写目录（内存）
+      - /tmp:rw,noexec,nosuid,size=256M   # 临时可写空间
     cap_drop:
       - ALL                                # 删除所有 Linux 能力
-    # 若需要特定能力可在此添加，例如访问 docker.sock 通常不需要额外能力
-    # cap_add:
-    #   - DAC_OVERRIDE      # 如果需要绕过文件权限检查（谨慎）
     security_opt:
       - no-new-privileges:true             # 禁止提权
-    pids_limit: 200                         # 限制进程数
-    mem_limit: 2g                            # 内存硬限制
-    memswap_limit: 2g                        # 禁用 swap（生产环境推荐）
-    cpus: '1.5'                               # CPU 核心限制
+    mem_limit: 1.5g                         # 内存硬限制
+    memswap_limit: 1.5g                     # 禁用 swap
+    cpus: '1.5'                              # CPU 限制
+    pids_limit: 200                          # 进程数限制
     logging:
       driver: "json-file"
       options:
         max-size: "10m"
         max-file: "3"
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:12131/health"]   # 假设有健康端点
+      test:
+        [
+          "CMD",
+          "node",
+          "-e",
+          "fetch('http://127.0.0.1:18789/healthz').then((r)=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))",
+        ]
       interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 40s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+    init: true
 
+  openclaw-cli:
+    image: ${OPENCLAW_IMAGE:-openclaw:local}
+    container_name: openclaw-cli
+    network_mode: "service:openclaw-gateway"   # 共享网关的网络命名空间
+    depends_on:
+      - openclaw-gateway
+    cap_drop:
+      - NET_RAW
+      - NET_ADMIN
+    security_opt:
+      - no-new-privileges:true
+    environment:
+      HOME: /home/node
+      TERM: xterm-256color
+      OPENCLAW_GATEWAY_TOKEN: ${OPENCLAW_GATEWAY_TOKEN:-}
+      OPENCLAW_ALLOW_INSECURE_PRIVATE_WS: ${OPENCLAW_ALLOW_INSECURE_PRIVATE_WS:-}
+      BROWSER: echo
+      CLAUDE_AI_SESSION_KEY: ${CLAUDE_AI_SESSION_KEY:-}
+      CLAUDE_WEB_SESSION_KEY: ${CLAUDE_WEB_SESSION_KEY:-}
+      CLAUDE_WEB_COOKIE: ${CLAUDE_WEB_COOKIE:-}
+    volumes:
+      - ${OPENCLAW_CONFIG_DIR}:/home/node/.openclaw
+      - ${OPENCLAW_WORKSPACE_DIR}:/home/node/.openclaw/workspace
+    stdin_open: true
+    tty: true
+    init: true
+    entrypoint: ["node", "dist/index.js"]
+    # 可选的资源限制（CLI 通常短暂运行，可以不设硬限制）
+    mem_limit: 512m
+    cpus: '0.5'
+
+  # 你的自定义智能体服务（qianduoduo），位于上级目录
   qianduoduo:
     build:
-      context: .
-      dockerfile: Dockerfile
+      context: ../agent-qianduoduo                     # 构建上下文指向上级的 qianduoduo 目录
+      dockerfile: Dockerfile.qianduoduo           # 如果 Dockerfile 名称不同，请修改
     image: qianduoduo:latest
     container_name: qianduoduo-quant
     restart: unless-stopped
+    depends_on:
+      - openclaw-gateway
     networks:
       - internal-net
-    # 不再共享网络栈，而是通过服务名访问 openclaw（例如 http://openclaw:12131）
-    # 如果必须使用 localhost 通信，可改为 network_mode: "service:openclaw"，但安全性较低
-    depends_on:
-      openclaw:
-        condition: service_healthy        # 等待 openclaw 健康后再启动
+    env_file:
+      - ../agent-qianduoduo/.env.qianduoduo            # 引用上级目录的环境变量文件
     volumes:
       - qianduoduo-data:/app/qianduoduo/data
-      # 配置文件以只读方式挂载
-      - ./skills:/app/qianduoduo/skills:ro
-      - ./AGENTS.md:/app/qianduoduo/AGENTS.md:ro
-      - ./TOOLS.md:/app/qianduoduo/TOOLS.md:ro
-      - ./permission:/app/qianduoduo/permission:ro
-    env_file:
-      - .env.qianduoduo
-    # 安全加固配置（类似 openclaw，根据实际需求调整）
+      - ../agent-qianduoduo/skills:/app/qianduoduo/skills:ro
+      - ../agent-qianduoduo/AGENTS.md:/app/qianduoduo/AGENTS.md:ro
+      - ../agent-qianduoduo/TOOLS.md:/app/qianduoduo/TOOLS.md:ro
+      - ../agent-qianduoduo/permission:/app/qianduoduo/permission:ro
+    # 安全加固
     user: "1000:1000"
     read_only: true
     tmpfs:
@@ -94,18 +135,18 @@ services:
       - ALL
     security_opt:
       - no-new-privileges:true
-    pids_limit: 100
     mem_limit: 1g
     memswap_limit: 1g
     cpus: '1.0'
+    pids_limit: 100
     logging:
       driver: "json-file"
       options:
         max-size: "10m"
         max-file: "3"
-    # 如果 qianduoduo 也需要健康检查，可添加类似配置
+    # 如果智能体需要暴露端口供外部访问，取消注释
+    # ports:
+    #   - "8080:8080"
 
 volumes:
-  openclaw-data:
-    # 可以指定外部卷驱动或标签，这里保持默认
-  qianduoduo-data:
+  qianduoduo-data:   # 命名卷，持久化智能体数据
