@@ -20,6 +20,8 @@ services:
     ports:
       - "${OPENCLAW_GATEWAY_PORT:-18789}:18789"
       - "${OPENCLAW_BRIDGE_PORT:-18790}:18790"
+    env_file:
+      .env
     environment:
       HOME: /home/node
       TERM: xterm-256color
@@ -85,6 +87,8 @@ services:
     cap_drop:
       - NET_RAW
       - NET_ADMIN
+    env_file:
+      .env
     security_opt:
       - no-new-privileges:true
     environment:
@@ -96,6 +100,7 @@ services:
       CLAUDE_AI_SESSION_KEY: ${CLAUDE_AI_SESSION_KEY:-}
       CLAUDE_WEB_SESSION_KEY: ${CLAUDE_WEB_SESSION_KEY:-}
       CLAUDE_WEB_COOKIE: ${CLAUDE_WEB_COOKIE:-}
+      OPENCLAW_GATEWAY_MODE: local
     volumes:
       - ${OPENCLAW_CONFIG_DIR}:/home/node/.openclaw
       - ${OPENCLAW_WORKSPACE_DIR}:/home/node/.openclaw/workspace
