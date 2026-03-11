@@ -42,6 +42,7 @@ docker-compose --version
 ### 下载本仓库地址
 ```
 mkdir -p /home/user/projects/qianduoduo
+cd   /home/user/projects/qianduoduo
 git clone git@github.com:litingtingting/dashen.git .
 ```
 
@@ -49,8 +50,9 @@ git clone git@github.com:litingtingting/dashen.git .
 ### openclaw文档：https://docs.openclaw.ai/install/docker
 ### 开始下载openclaw
 ```
-git clone https://github.com/openclaw/openclaw.git
-cd openclaw
+mkdir -p /home/user/projects/openclaw
+cd /home/user/projects/openclaw
+git clone https://github.com/openclaw/openclaw.git .
 export OPENCLAW_IMAGE="ghcr.io/openclaw/openclaw:latest"
 
 # 运行安装脚本
