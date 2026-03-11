@@ -23,6 +23,8 @@ echo ""
 if [ $# -gt 0 ]; then
     exec "$@"
 else
-    echo "Usage: docker run -it qianduoduo [python script.py]"
-    exec /bin/sh
+    echo "Usage: docker run -it qianduoduo [python3 /app/qianduoduo/app.py]"
+    
+    # 启动 Flask 服务（前台运行）
+    exec python3 /app/qianduoduo/app.py
 fi
