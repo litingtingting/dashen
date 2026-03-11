@@ -16,11 +16,17 @@ RUN pip3 install --break-system-packages --no-cache-dir \
     websocket-client>=1.6.0 \
     && pip3 cache purge
 
+# 安装flask
+RUN pip install --no-cache-dir flask
+
 # 复制代码
 COPY skills/ ./skills/
 COPY AGENTS.md ./AGENTS.md
 COPY TOOLS.md ./TOOLS.md
 COPY permission/ ./permission/
+
+# 复制 app.py
+COPY app.py /app/qianduoduo/app.py
 
 # 创建非 root 用户
 RUN adduser -D -g '' qianbot && \
@@ -29,5 +35,8 @@ USER qianbot
 
 # 启动脚本（COPY 时自动保留执行权限）
 COPY --chmod=755 entrypoint.sh /entrypoint.sh
+
+# 设置工作目录
+WORKDIR /app/qianduoduo
 
 ENTRYPOINT ["/entrypoint.sh"]
