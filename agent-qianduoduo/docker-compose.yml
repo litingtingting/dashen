@@ -115,8 +115,8 @@ services:
   # 你的自定义智能体服务（qianduoduo），位于上级目录
   qianduoduo:
     build:
-      context: ../agent-qianduoduo                     # 构建上下文指向上级的 qianduoduo 目录
-      dockerfile: Dockerfile           # 如果 Dockerfile 名称不同，请修改
+      context: ${AGENT_QIANDUODUO_DIR}                     # 构建上下文指向上级的 qianduoduo 目录
+      dockerfile: Dockerfile.qianduoduo           # 如果 Dockerfile 名称不同，请修改
     image: qianduoduo:latest
     container_name: qianduoduo-quant
     restart: unless-stopped
