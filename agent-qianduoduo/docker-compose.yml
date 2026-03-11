@@ -124,14 +124,18 @@ services:
       - openclaw-gateway
     networks:
       - internal-net
+    expose:
+      - "5000"                # 暴露 5000 端口给 internal-net 内的其他容器
     env_file:
-      - ../agent-qianduoduo/.env.qianduoduo            # 引用上级目录的环境变量文件
+      - ${AGENT_QIANDUODUO_DIR}/.env.qianduoduo            # 引用上级目录的环境变量文件
+    environment:
+      AGENT_QIANDUODUO_DIR: /home/user/projects/dashen/agent-qianduoduo
     volumes:
       - qianduoduo-data:/app/qianduoduo/data
-      - ../agent-qianduoduo/skills:/app/qianduoduo/skills:ro
-      - ../agent-qianduoduo/AGENTS.md:/app/qianduoduo/AGENTS.md:ro
-      - ../agent-qianduoduo/TOOLS.md:/app/qianduoduo/TOOLS.md:ro
-      - ../agent-qianduoduo/permission:/app/qianduoduo/permission:ro
+      - ${AGENT_QIANDUODUO_DIR}/skills:/app/qianduoduo/skills:ro
+      - ${AGENT_QIANDUODUO_DIR}/AGENTS.md:/app/qianduoduo/AGENTS.md:ro
+      - ${AGENT_QIANDUODUO_DIR}/TOOLS.md:/app/qianduoduo/TOOLS.md:ro
+      - ${AGENT_QIANDUODUO_DIR}/permission:/app/qianduoduo/permission:ro
     # 安全加固
     user: "1000:1000"
     read_only: true
