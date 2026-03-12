@@ -56,6 +56,7 @@ git clone https://github.com/openclaw/openclaw.git .
 export OPENCLAW_IMAGE="ghcr.io/openclaw/openclaw:latest"
 
 # 运行安装脚本
+export OPENCLAW_HOME_VOLUME="openclaw_home"
 ./docker-setup.sh
 
 # 将大神中仓库中的agent-qianduoduo目录下的docker-compose.yml和.env.openclaw移到当前目录，并改相关环境变量
