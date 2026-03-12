@@ -56,6 +56,7 @@ git clone https://github.com/openclaw/openclaw.git .
 export OPENCLAW_IMAGE="ghcr.io/openclaw/openclaw:latest"
 
 # 运行安装脚本
+export OPENCLAW_IMAGE="ghcr.io/openclaw/openclaw:latest"
 export OPENCLAW_HOME_VOLUME="openclaw_home"
 ./docker-setup.sh
 
