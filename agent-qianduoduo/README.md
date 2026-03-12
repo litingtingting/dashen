@@ -24,7 +24,7 @@ sudo docker run hello-world
 }
 ```
 
-### 阿里云自带的docker-compose版本比较低的话，可以接下来执行以下操作
+### 阿里云镜像自带的docker-compose版本比较低的话，可以接下来执行以下操作
 ```
 # 下载最新版 Docker Compose 二进制文件
 sudo curl -L "https://github.com/docker/compose/releases/latest/download/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose
