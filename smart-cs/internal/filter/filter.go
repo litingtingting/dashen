@@ -93,7 +93,7 @@ func (f *Filter) ProcessResponse(aiText string) (string, error) {
 	text := f.FilterSensitiveWords(aiText)
 
 	// 2. 合规检查
-	passed, reason := f.CheckCompliance(text)
+	passed, _ := f.CheckCompliance(text)
 	if !passed {
 		// 记录但不阻断，仅标记
 		text = "[待审核] " + text

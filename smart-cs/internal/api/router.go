@@ -1,13 +1,13 @@
 package api
 
 import (
-	"smart-cs/cmd/server"
+	"smart-cs/pkg/config"
 
 	"github.com/gin-gonic/gin"
 )
 
 // SetupRouter 设置路由
-func SetupRouter(cfg *server.Config) *gin.Engine {
+func SetupRouter(cfg *config.Config) *gin.Engine {
 	router := gin.Default()
 
 	// 健康检查

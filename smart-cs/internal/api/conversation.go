@@ -2,6 +2,7 @@ package api
 
 import (
 	"net/http"
+	"os"
 	"time"
 
 	"smart-cs/internal/ai"
@@ -146,19 +147,49 @@ func getConversation(c *gin.Context) {
 // handleAITest AI 测试接口（开发用）
 func handleAITest(c *gin.Context) {
 	var req struct {
-		Prompt string `json:"prompt"`
+		Prompt   string `json:"prompt"`
+		TenantID string `json:"tenant_id"`
 	}
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
 
-	// TODO: 实际调用百炼 API
-	// client := ai.NewBailianClient(apiKey, model)
-	// response, err := client.Chat(req.Prompt, persona)
+	// 从环境变量获取 API Key
+	apiKey := os.Getenv("BAILIAN_API_KEY")
+	if apiKey == "" {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "BAILIAN_API_KEY not configured"})
+		return
+	}
 
-	// 临时模拟
-	response := "测试回复：" + req.Prompt
+	// 创建百炼客户端
+	client := ai.NewBailianClient(apiKey, "qwen-plus")
 
-	c.JSON(http.StatusOK, gin.H{"response": response})
+	// 默认人设（实际应从租户配置加载）
+	persona := ai.Persona{
+		Name:         "小智",
+		Tone:         "亲切友好",
+		Greeting:     "亲，您好呀~",
+		Emojis:       "😊🌟💕",
+		AddressStyle: "亲",
+	}
+
+	// 调用百炼 API
+	response, err := client.Chat(req.Prompt, persona)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "AI 调用失败：" + err.Error()})
+		return
+	}
+
+	// 过滤和人味化处理
+	f := filter.NewFilter(filter.DefaultSensitiveWords, 500)
+	processedResponse, err := f.ProcessResponse(response)
+	if err != nil {
+		processedResponse = response
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"response": processedResponse,
+		"raw":      response,
+	})
 }

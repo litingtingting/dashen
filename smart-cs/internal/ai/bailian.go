@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"os"
+	"strings"
 	"time"
 )
 
@@ -17,49 +19,60 @@ type BailianClient struct {
 	Timeout   time.Duration
 }
 
-// ChatRequest 聊天请求
-type ChatRequest struct {
-	Model string `json:"model"`
-	Input Input  `json:"input"`
+// ChatCompletionRequest OpenAI 兼容的聊天请求
+type ChatCompletionRequest struct {
+	Model    string    `json:"model"`
+	Messages []Message `json:"messages"`
 }
 
-// Input 输入结构
-type Input struct {
-	Prompt string `json:"prompt"`
+// Message 消息结构
+type Message struct {
+	Role    string `json:"role"`
+	Content string `json:"content"`
 }
 
-// ChatResponse 聊天响应
-type ChatResponse struct {
-	Output Output `json:"output"`
+// ChatCompletionResponse OpenAI 兼容的聊天响应
+type ChatCompletionResponse struct {
+	Choices []Choice `json:"choices"`
 }
 
-// Output 输出结构
-type Output struct {
-	Text string `json:"text"`
+// Choice 选择结构
+type Choice struct {
+	Message Message `json:"message"`
 }
 
-// NewBailianClient 创建百炼客户端
+// NewBailianClient 创建百炼客户端（OpenAI 兼容模式）
 func NewBailianClient(apiKey, model string) *BailianClient {
+	// 默认使用 DashScope OpenAI 兼容端点（中国大陆）
+	baseURL := "https://dashscope.aliyuncs.com/compatible-mode/v1"
+	
+	// 支持环境变量覆盖 API 端点（优先级更高）
+	if envURL := os.Getenv("BAILIAN_BASEURL"); envURL != "" {
+		baseURL = envURL
+		fmt.Printf("[DEBUG] Using BAILIAN_BASEURL from env: %s\n", baseURL)
+	}
+	
 	return &BailianClient{
 		APIKey:  apiKey,
 		Model:   model,
-		BaseURL: "https://dashscope.aliyuncs.com/api/v1",
+		BaseURL: strings.TrimSuffix(baseURL, "/"),
 		Timeout: 30 * time.Second,
 	}
 }
 
-// Chat 发送聊天请求
+// Chat 发送聊天请求（OpenAI 兼容格式）
 func (c *BailianClient) Chat(prompt string, persona Persona) (string, error) {
-	// 构建带人设的 prompt
+	// 构建带人设的 messages
 	systemPrompt := c.buildSystemPrompt(persona)
-	fullPrompt := fmt.Sprintf("%s\n\n用户消息：%s", systemPrompt, prompt)
+	messages := []Message{
+		{Role: "system", Content: systemPrompt},
+		{Role: "user", Content: prompt},
+	}
 
-	// 创建请求
-	reqBody := ChatRequest{
-		Model: c.Model,
-		Input: Input{
-			Prompt: fullPrompt,
-		},
+	// 创建请求（OpenAI 兼容格式）
+	reqBody := ChatCompletionRequest{
+		Model:    c.Model,
+		Messages: messages,
 	}
 
 	jsonData, err := json.Marshal(reqBody)
@@ -68,7 +81,7 @@ func (c *BailianClient) Chat(prompt string, persona Persona) (string, error) {
 	}
 
 	// 创建 HTTP 请求
-	req, err := http.NewRequest("POST", c.BaseURL+"/services/aigc/text-generation/generation", bytes.NewBuffer(jsonData))
+	req, err := http.NewRequest("POST", c.BaseURL+"/chat/completions", bytes.NewBuffer(jsonData))
 	if err != nil {
 		return "", err
 	}
@@ -94,13 +107,26 @@ func (c *BailianClient) Chat(prompt string, persona Persona) (string, error) {
 		return "", err
 	}
 
-	// 解析响应
-	var chatResp ChatResponse
-	if err := json.Unmarshal(body, &chatResp); err != nil {
-		return "", err
+	// 调试：打印原始响应
+	fmt.Printf("[DEBUG] API Response Status: %d\n", resp.StatusCode)
+	fmt.Printf("[DEBUG] API Response Body: %s\n", string(body))
+
+	// 检查 HTTP 状态码
+	if resp.StatusCode != http.StatusOK {
+		return "", fmt.Errorf("API request failed with status %d: %s", resp.StatusCode, string(body))
 	}
 
-	return chatResp.Output.Text, nil
+	// 解析响应（OpenAI 兼容格式）
+	var completionResp ChatCompletionResponse
+	if err := json.Unmarshal(body, &completionResp); err != nil {
+		return "", fmt.Errorf("failed to parse response: %v, body: %s", err, string(body))
+	}
+
+	if len(completionResp.Choices) == 0 {
+		return "", fmt.Errorf("no choices in response")
+	}
+
+	return completionResp.Choices[0].Message.Content, nil
 }
 
 // buildSystemPrompt 构建系统提示词（人设）

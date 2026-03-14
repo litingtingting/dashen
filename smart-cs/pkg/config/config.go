@@ -1,7 +1,8 @@
-package main
+package config
 
 import (
 	"os"
+	"strconv"
 
 	"gopkg.in/yaml.v3"
 )
@@ -25,16 +26,16 @@ type SystemConfig struct {
 }
 
 type ServerConfig struct {
-	Host string `yaml:"host"`
-	Port int    `yaml:"port"`
-	Domain string `yaml:"domain"`
+	Host string    `yaml:"host"`
+	Port int       `yaml:"port"`
+	Domain string  `yaml:"domain"`
 	SSL    SSLConfig `yaml:"ssl"`
 }
 
 type SSLConfig struct {
-	Enabled   bool   `yaml:"enabled"`
-	CertFile  string `yaml:"cert_file"`
-	KeyFile   string `yaml:"key_file"`
+	Enabled  bool   `yaml:"enabled"`
+	CertFile string `yaml:"cert_file"`
+	KeyFile  string `yaml:"key_file"`
 }
 
 type DatabaseConfig struct {
@@ -53,12 +54,12 @@ type PlatformConfig struct {
 }
 
 type WechatConfig struct {
-	Enabled      bool   `yaml:"enabled"`
-	AppID        string `yaml:"app_id"`
-	AppSecret    string `yaml:"app_secret"`
-	Token        string `yaml:"token"`
+	Enabled        bool   `yaml:"enabled"`
+	AppID          string `yaml:"app_id"`
+	AppSecret      string `yaml:"app_secret"`
+	Token          string `yaml:"token"`
 	EncodingAESKey string `yaml:"encoding_aes_key"`
-	CallbackURL  string `yaml:"callback_url"`
+	CallbackURL    string `yaml:"callback_url"`
 }
 
 type TaobaoConfig struct {
@@ -76,14 +77,14 @@ type DouyinConfig struct {
 }
 
 type AIConfig struct {
-	Provider string     `yaml:"provider"`
-	APIKey   string     `yaml:"api_key"`
-	Model    string     `yaml:"model"`
-	Filter   FilterConfig `yaml:"filter"`
+	Provider string         `yaml:"provider"`
+	APIKey   string         `yaml:"api_key"`
+	Model    string         `yaml:"model"`
+	Filter   FilterConfig   `yaml:"filter"`
 }
 
 type FilterConfig struct {
-	Enabled           bool   `yaml:"enabled"`
+	Enabled            bool   `yaml:"enabled"`
 	SensitiveWordsFile string `yaml:"sensitive_words_file"`
 	MaxResponseLength  int    `yaml:"max_response_length"`
 }
@@ -99,10 +100,10 @@ type SuperAdminConfig struct {
 }
 
 type LogConfig struct {
-	Level      string `yaml:"level"`
-	File       string `yaml:"file"`
-	MaxSizeMB  int    `yaml:"max_size_mb"`
-	MaxDays    int    `yaml:"max_days"`
+	Level     string `yaml:"level"`
+	File      string `yaml:"file"`
+	MaxSizeMB int    `yaml:"max_size_mb"`
+	MaxDays   int    `yaml:"max_days"`
 }
 
 type CleanupConfig struct {
@@ -110,7 +111,7 @@ type CleanupConfig struct {
 	Schedule               string `yaml:"schedule"`
 }
 
-func loadConfig(path string) (*Config, error) {
+func LoadConfig(path string) (*Config, error) {
 	data, err := os.ReadFile(path)
 	if err != nil {
 		return nil, err
@@ -121,5 +122,28 @@ func loadConfig(path string) (*Config, error) {
 		return nil, err
 	}
 
+	// 支持环境变量覆盖配置（优先级：环境变量 > 配置文件）
+	cfg.applyEnvOverrides()
+
 	return &cfg, nil
+}
+
+// applyEnvOverrides 应用环境变量覆盖
+func (c *Config) applyEnvOverrides() {
+	// AI API Key 支持环境变量覆盖
+	if apiKey := os.Getenv("BAILIAN_API_KEY"); apiKey != "" {
+		c.AI.APIKey = apiKey
+	}
+
+	// 服务器端口支持环境变量覆盖
+	if port := os.Getenv("SERVER_PORT"); port != "" {
+		if p, err := strconv.Atoi(port); err == nil {
+			c.Server.Port = p
+		}
+	}
+
+	// 日志级别支持环境变量覆盖
+	if level := os.Getenv("LOG_LEVEL"); level != "" {
+		c.Log.Level = level
+	}
 }
