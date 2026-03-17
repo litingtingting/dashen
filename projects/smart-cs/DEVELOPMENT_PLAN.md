@@ -224,9 +224,34 @@ CREATE INDEX idx_orders_tenant ON orders(tenant_id, created_at);
 │   ├── src/
 │   └── dist/            # 编译后静态文件
 ├── configs/
-│   └── config.yml       # 配置文件
+│   ├── config.yml       # 配置文件
+│   └── config.example.yml  # 配置模板
 ├── logs/                # 日志目录
 └── data/                # SQLite 数据库
+```
+
+### 配置文件示例
+
+```yaml
+# configs/config.example.yml
+server:
+  port: 80
+  host: 0.0.0.0
+
+database:
+  path: ./data/smart-cs.db
+  wal_mode: true
+
+bailian:
+  base_url: https://coding.dashscope.aliyuncs.com/v1
+  api_key: ${BAILIAN_API_KEY}  # 从环境变量读取
+  model: qwen-plus
+  timeout_ms: 30000
+
+# 限流配置
+rate_limit:
+  global_qps: 10
+  per_tenant_qps: 5
 ```
 
 ---
@@ -307,6 +332,7 @@ if !limiter.Allow() {
 ## 📞 需要丽斯老板提供的
 
 ### 🔴 高优先级（现在就要）
+- [x] 百炼 API Key - 已有！`sk-sp-c3a2a626f75744cf886fb524af8b9203`
 - [ ] 淘宝店铺名称/ID
 - [ ] 阿里开放平台账号（可以晚点注册）
 
