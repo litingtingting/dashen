@@ -66,6 +66,7 @@ def init_db():
             content TEXT NOT NULL,
             type TEXT NOT NULL DEFAULT 'general',
             topic TEXT,
+            agent_id TEXT NOT NULL DEFAULT 'shared',
             created_at TEXT NOT NULL,
             updated_at TEXT NOT NULL
         )
@@ -103,14 +104,14 @@ def init_db():
     return conn
 
 
-def add_memory(conn: sqlite3.Connection, content: str, memory_type: str = "general", topic: str = None) -> int:
+def add_memory(conn: sqlite3.Connection, content: str, memory_type: str = "general", topic: str = None, agent_id: str = "shared") -> int:
     """添加记忆并生成向量"""
     now = datetime.now().isoformat()
     
     cursor = conn.cursor()
     cursor.execute(
-        "INSERT INTO memories (content, type, topic, created_at, updated_at) VALUES (?, ?, ?, ?, ?)",
-        (content, memory_type, topic, now, now)
+        "INSERT INTO memories (content, type, topic, agent_id, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?)",
+        (content, memory_type, topic, agent_id, now, now)
     )
     memory_id = cursor.lastrowid
     
@@ -125,32 +126,48 @@ def add_memory(conn: sqlite3.Connection, content: str, memory_type: str = "gener
     except Exception as e:
         print(f"Warning: Failed to generate embedding: {e}")
     
-    # 更新 FTS
-    cursor.execute("INSERT INTO memories_fts(rowid, content, topic) VALUES (?, ?, ?)",
-                   (memory_id, content, topic or ""))
-    
     conn.commit()
     return memory_id
 
 
-def search_memories(conn: sqlite3.Connection, query: str, top_k: int = 5, memory_type: str = None) -> list[dict]:
+def search_memories(conn: sqlite3.Connection, query: str, top_k: int = 5, memory_type: str = None, agent_id: str = None) -> list[dict]:
     """语义搜索记忆 - 使用 LIKE + 向量相似度混合"""
     cursor = conn.cursor()
     
     # 构造候选查询（中文 FTS 有分词问题，改用 LIKE）
     like_pattern = f"%{query}%"
-    if memory_type:
+    
+    # 动态构建 SQL
+    if memory_type and agent_id:
         cursor.execute("""
-            SELECT m.id, m.content, m.type, m.topic, m.created_at,
+            SELECT m.id, m.content, m.type, m.topic, m.created_at, m.agent_id,
+                   (SELECT vector FROM embeddings WHERE memory_id = m.id LIMIT 1) as vector
+            FROM memories m
+            WHERE m.content LIKE ? AND m.type = ? AND m.agent_id = ?
+            ORDER BY m.created_at DESC
+            LIMIT 100
+        """, (like_pattern, memory_type, agent_id))
+    elif memory_type:
+        cursor.execute("""
+            SELECT m.id, m.content, m.type, m.topic, m.created_at, m.agent_id,
                    (SELECT vector FROM embeddings WHERE memory_id = m.id LIMIT 1) as vector
             FROM memories m
             WHERE m.content LIKE ? AND m.type = ?
             ORDER BY m.created_at DESC
             LIMIT 100
         """, (like_pattern, memory_type))
+    elif agent_id:
+        cursor.execute("""
+            SELECT m.id, m.content, m.type, m.topic, m.created_at, m.agent_id,
+                   (SELECT vector FROM embeddings WHERE memory_id = m.id LIMIT 1) as vector
+            FROM memories m
+            WHERE m.content LIKE ? AND m.agent_id = ?
+            ORDER BY m.created_at DESC
+            LIMIT 100
+        """, (like_pattern, agent_id))
     else:
         cursor.execute("""
-            SELECT m.id, m.content, m.type, m.topic, m.created_at,
+            SELECT m.id, m.content, m.type, m.topic, m.created_at, m.agent_id,
                    (SELECT vector FROM embeddings WHERE memory_id = m.id LIMIT 1) as vector
             FROM memories m
             WHERE m.content LIKE ?
@@ -171,13 +188,15 @@ def search_memories(conn: sqlite3.Connection, query: str, top_k: int = 5, memory
         # 降级：返回 LIKE 结果
         return [{
             "id": row[0], "content": row[1], "type": row[2],
-            "topic": row[3], "created_at": row[4], "score": 0.0
+            "topic": row[3], "created_at": row[4],
+            "agent_id": row[5] if len(row) > 5 else "shared",
+            "score": 0.0
         } for row in candidates[:top_k]]
     
     # 计算余弦相似度
     results = []
     for row in candidates:
-        memory_id, content, memory_type, topic, created_at, vector_json = row
+        memory_id, content, memory_type, topic, created_at, agent_id, vector_json = row
         if not vector_json:
             continue
         try:
@@ -189,6 +208,7 @@ def search_memories(conn: sqlite3.Connection, query: str, top_k: int = 5, memory
                 "type": memory_type,
                 "topic": topic,
                 "created_at": created_at,
+                "agent_id": row[5] if len(row) > 5 else "shared",
                 "score": score
             })
         except Exception:
