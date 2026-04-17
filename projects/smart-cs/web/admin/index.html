@@ -1,0 +1,610 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>智能客服系统 - 管理后台</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: #f5f5f5; }
+        .header { background: #1890ff; color: white; padding: 20px; text-align: center; }
+        .container { max-width: 1200px; margin: 0 auto; padding: 20px; }
+        .card { background: white; border-radius: 8px; padding: 20px; margin-bottom: 20px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); }
+        .card h2 { color: #333; margin-bottom: 15px; border-bottom: 2px solid #1890ff; padding-bottom: 10px; }
+        .btn { background: #1890ff; color: white; border: none; padding: 10px 20px; border-radius: 4px; cursor: pointer; margin: 5px; }
+        .btn:hover { background: #40a9ff; }
+        .btn-danger { background: #ff4d4f; }
+        .btn-danger:hover { background: #ff7875; }
+        .form-group { margin-bottom: 15px; }
+        .form-group label { display: block; margin-bottom: 5px; color: #666; }
+        .form-group input, .form-group select, .form-group textarea { width: 100%; padding: 10px; border: 1px solid #d9d9d9; border-radius: 4px; }
+        table { width: 100%; border-collapse: collapse; }
+        th, td { padding: 12px; text-align: left; border-bottom: 1px solid #e8e8e8; }
+        th { background: #fafafa; font-weight: 600; }
+        .status { padding: 4px 8px; border-radius: 4px; font-size: 12px; }
+        .status-active { background: #f6ffed; color: #52c41a; border: 1px solid #b7eb8f; }
+        .status-inactive { background: #fff1f0; color: #ff4d4f; border: 1px solid #ffa39e; }
+        .chat-box { height: 400px; border: 1px solid #d9d9d9; border-radius: 4px; padding: 15px; overflow-y: auto; background: #fafafa; }
+        .message { margin-bottom: 15px; padding: 10px; border-radius: 8px; max-width: 80%; }
+        .message.user { background: #1890ff; color: white; margin-left: auto; }
+        .message.ai { background: white; border: 1px solid #d9d9d9; }
+        .message-input { display: flex; gap: 10px; margin-top: 15px; }
+        .message-input input { flex: 1; padding: 10px; border: 1px solid #d9d9d9; border-radius: 4px; }
+        .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 20px; }
+        .stat-card { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 20px; border-radius: 8px; text-align: center; }
+        .stat-value { font-size: 32px; font-weight: bold; margin: 10px 0; }
+        .stat-label { opacity: 0.9; }
+        .tabs { display: flex; border-bottom: 2px solid #e8e8e8; margin-bottom: 20px; }
+        .tab { padding: 10px 20px; cursor: pointer; border-bottom: 2px solid transparent; margin-bottom: -2px; }
+        .tab.active { border-bottom-color: #1890ff; color: #1890ff; }
+        .hidden { display: none; }
+        .model-select { margin-bottom: 15px; padding: 10px; background: #e6f7ff; border-radius: 4px; }
+        .model-select label { font-weight: 600; color: #1890ff; }
+        .model-select select { margin-left: 10px; padding: 8px 15px; border: 1px solid #1890ff; border-radius: 4px; background: white; }
+        
+        /* 登录页面样式 */
+        .login-container { max-width: 400px; margin: 100px auto; }
+        .login-card { background: white; border-radius: 8px; padding: 40px; box-shadow: 0 4px 16px rgba(0,0,0,0.15); }
+        .login-title { text-align: center; color: #1890ff; margin-bottom: 30px; font-size: 24px; }
+        .login-icon { text-align: center; font-size: 48px; margin-bottom: 20px; }
+        .error-message { background: #fff1f0; border: 1px solid #ffa39e; color: #ff4d4f; padding: 10px; border-radius: 4px; margin-bottom: 15px; display: none; }
+        .user-info { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; padding: 10px; background: #e6f7ff; border-radius: 4px; }
+        .user-info span { color: #1890ff; font-weight: 600; }
+        .logout-btn { background: #ff4d4f; color: white; border: none; padding: 5px 15px; border-radius: 4px; cursor: pointer; font-size: 12px; }
+        .logout-btn:hover { background: #ff7875; }
+    </style>
+</head>
+<body>
+    <!-- 登录页面 -->
+    <div id="loginPage" class="login-container">
+        <div class="login-card">
+            <div class="login-icon">🤖</div>
+            <h1 class="login-title">智能客服系统</h1>
+            <h2 style="text-align: center; color: #666; margin-bottom: 30px; font-size: 16px;">管理后台</h2>
+            
+            <div id="loginError" class="error-message"></div>
+            
+            <div class="form-group">
+                <label>用户名</label>
+                <input type="text" id="loginUsername" placeholder="请输入用户名" value="admin">
+            </div>
+            <div class="form-group">
+                <label>密码</label>
+                <input type="password" id="loginPassword" placeholder="请输入密码" value="admin123">
+            </div>
+            <button class="btn" style="width: 100%;" onclick="login()">登录</button>
+            
+            <p style="text-align: center; margin-top: 20px; color: #999; font-size: 12px;">
+                默认账号：admin / admin123<br>
+                首次登录后请立即修改密码
+            </p>
+        </div>
+    </div>
+
+    <!-- 后台主页面 -->
+    <div id="mainPage" class="hidden">
+        <div class="header">
+            <h1>🤖 智能客服系统 - 管理后台</h1>
+            <p>多租户 AI 客服管理平台</p>
+        </div>
+
+        <div class="container">
+            <!-- 用户信息 -->
+            <div class="user-info">
+                <span>👤 欢迎，<span id="currentUser">admin</span></span>
+                <button class="logout-btn" onclick="logout()">退出登录</button>
+            </div>
+
+            <!-- 统计卡片 -->
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <div class="stat-label">租户数量</div>
+                    <div class="stat-value" id="tenantCount">-</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-label">用户数量</div>
+                    <div class="stat-value" id="userCount">-</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-label">对话总数</div>
+                    <div class="stat-value" id="conversationCount">-</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-label">系统状态</div>
+                    <div class="stat-value">✅ 正常</div>
+                </div>
+            </div>
+
+            <!-- 功能标签页 -->
+            <div class="card" style="margin-top: 20px;">
+                <div class="tabs">
+                    <div class="tab active" onclick="switchTab('tenant')">租户管理</div>
+                    <div class="tab" onclick="switchTab('user')">用户管理</div>
+                    <div class="tab" onclick="switchTab('conversation')">对话管理</div>
+                    <div class="tab" onclick="switchTab('ai')">AI 训练</div>
+                    <div class="tab" onclick="switchTab('plan')">套餐管理</div>
+                </div>
+
+                <!-- 租户管理 -->
+                <div id="tenant-tab" class="tab-content">
+                    <h2>🏢 租户管理</h2>
+                    <div class="form-group">
+                        <button class="btn" onclick="showAddTenantForm()">+ 新增租户</button>
+                    </div>
+                    <div id="addTenantForm" class="hidden" style="background: #fafafa; padding: 15px; border-radius: 4px; margin-bottom: 15px;">
+                        <div class="form-group">
+                            <label>租户名称</label>
+                            <input type="text" id="tenantName" placeholder="例如：某某店铺">
+                        </div>
+                        <div class="form-group">
+                            <label>平台类型</label>
+                            <select id="tenantType">
+                                <option value="taobao">淘宝店铺</option>
+                                <option value="wechat">微信公众号</option>
+                                <option value="douyin">抖音</option>
+                            </select>
+                        </div>
+                        <button class="btn" onclick="createTenant()">创建</button>
+                        <button class="btn btn-danger" onclick="hideAddTenantForm()">取消</button>
+                    </div>
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>ID</th>
+                                <th>名称</th>
+                                <th>类型</th>
+                                <th>状态</th>
+                                <th>创建时间</th>
+                                <th>操作</th>
+                            </tr>
+                        </thead>
+                        <tbody id="tenantList"></tbody>
+                    </table>
+                </div>
+
+                <!-- 用户管理 -->
+                <div id="user-tab" class="tab-content hidden">
+                    <h2>👥 用户管理</h2>
+                    <div class="form-group">
+                        <button class="btn" onclick="showAddUserForm()">+ 新增用户</button>
+                    </div>
+                    <div id="addUserForm" class="hidden" style="background: #fafafa; padding: 15px; border-radius: 4px; margin-bottom: 15px;">
+                        <div class="form-group">
+                            <label>用户名</label>
+                            <input type="text" id="username" placeholder="登录用户名">
+                        </div>
+                        <div class="form-group">
+                            <label>密码</label>
+                            <input type="password" id="password" placeholder="登录密码">
+                        </div>
+                        <div class="form-group">
+                            <label>所属租户</label>
+                            <select id="userTenant"></select>
+                        </div>
+                        <div class="form-group">
+                            <label>角色</label>
+                            <select id="userRole">
+                                <option value="admin">管理员</option>
+                                <option value="operator">操作员</option>
+                            </select>
+                        </div>
+                        <button class="btn" onclick="createUser()">创建</button>
+                        <button class="btn btn-danger" onclick="hideAddUserForm()">取消</button>
+                    </div>
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>ID</th>
+                                <th>用户名</th>
+                                <th>角色</th>
+                                <th>所属租户</th>
+                                <th>创建时间</th>
+                                <th>操作</th>
+                            </tr>
+                        </thead>
+                        <tbody id="userList"></tbody>
+                    </table>
+                </div>
+
+                <!-- 对话管理 -->
+                <div id="conversation-tab" class="tab-content hidden">
+                    <h2>💬 对话管理</h2>
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>ID</th>
+                                <th>客户 ID</th>
+                                <th>消息类型</th>
+                                <th>内容</th>
+                                <th>时间</th>
+                            </tr>
+                        </thead>
+                        <tbody id="conversationList"></tbody>
+                    </table>
+                </div>
+
+                <!-- AI 训练 -->
+                <div id="ai-tab" class="tab-content hidden">
+                    <h2>🤖 AI 对话训练</h2>
+                    <p style="color: #666; margin-bottom: 15px;">直接与 AI 客服对话，进行基础训练和人设调整</p>
+                    
+                    <div class="model-select">
+                        <label>🔧 选择模型：</label>
+                        <select id="modelSelect" onchange="changeModel()">
+                            <option value="qwen-plus">qwen-plus (推荐)</option>
+                            <option value="qwen-turbo">qwen-turbo (快速)</option>
+                            <option value="qwen-max">qwen-max (最强)</option>
+                        </select>
+                        <span id="currentModel" style="margin-left: 15px; color: #52c41a;">当前：qwen-plus</span>
+                    </div>
+
+                    <div class="chat-box" id="chatBox">
+                        <div class="message ai">
+                            <strong>AI 客服：</strong>
+                            <p>您好！我是智能客服助手，有什么可以帮您的吗？😊</p>
+                        </div>
+                    </div>
+                    <div class="message-input">
+                        <input type="text" id="messageInput" placeholder="输入消息..." onkeypress="if(event.keyCode===13) sendMessage()">
+                        <button class="btn" onclick="sendMessage()">发送</button>
+                    </div>
+                </div>
+
+                <!-- 套餐管理 -->
+                <div id="plan-tab" class="tab-content hidden">
+                    <h2>💳 套餐管理</h2>
+                    <div class="form-group">
+                        <button class="btn" onclick="showAddPlanForm()">+ 新增套餐</button>
+                    </div>
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>ID</th>
+                                <th>套餐名称</th>
+                                <th>每日限制</th>
+                                <th>月价格</th>
+                                <th>年价格</th>
+                                <th>操作</th>
+                            </tr>
+                        </thead>
+                        <tbody id="planList"></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const API_BASE = '';
+        let currentModel = 'qwen-plus';
+        let currentUser = null;
+
+        // 检查登录状态
+        function checkLogin() {
+            const token = localStorage.getItem('admin_token');
+            const user = localStorage.getItem('admin_user');
+            if (token && user) {
+                currentUser = user;
+                document.getElementById('loginPage').classList.add('hidden');
+                document.getElementById('mainPage').classList.remove('hidden');
+                document.getElementById('currentUser').textContent = user;
+                loadStats();
+                loadTenants();
+            } else {
+                document.getElementById('loginPage').classList.remove('hidden');
+                document.getElementById('mainPage').classList.add('hidden');
+            }
+        }
+
+        // 登录
+        async function login() {
+            const username = document.getElementById('loginUsername').value;
+            const password = document.getElementById('loginPassword').value;
+            const errorDiv = document.getElementById('loginError');
+
+            if (!username || !password) {
+                errorDiv.textContent = '请输入用户名和密码';
+                errorDiv.style.display = 'block';
+                return;
+            }
+
+            try {
+                // 简化登录：验证默认账号或已创建的用户
+                if (username === 'admin' && password === 'admin123') {
+                    // 默认账号登录成功
+                    localStorage.setItem('admin_token', 'admin_token_' + Date.now());
+                    localStorage.setItem('admin_user', username);
+                    currentUser = username;
+                    
+                    document.getElementById('loginPage').classList.add('hidden');
+                    document.getElementById('mainPage').classList.remove('hidden');
+                    document.getElementById('currentUser').textContent = username;
+                    
+                    loadStats();
+                    loadTenants();
+                } else {
+                    // 尝试 API 登录
+                    const response = await fetch('/api/users/login', {
+                        method: 'POST',
+                        headers: {'Content-Type': 'application/json'},
+                        body: JSON.stringify({username, password})
+                    });
+                    
+                    if (response.ok) {
+                        const data = await response.json();
+                        localStorage.setItem('admin_token', data.token || 'token_' + Date.now());
+                        localStorage.setItem('admin_user', username);
+                        currentUser = username;
+                        
+                        document.getElementById('loginPage').classList.add('hidden');
+                        document.getElementById('mainPage').classList.remove('hidden');
+                        document.getElementById('currentUser').textContent = username;
+                        
+                        loadStats();
+                        loadTenants();
+                    } else {
+                        errorDiv.textContent = '用户名或密码错误';
+                        errorDiv.style.display = 'block';
+                    }
+                }
+            } catch(e) {
+                errorDiv.textContent = '登录失败：' + e.message;
+                errorDiv.style.display = 'block';
+            }
+        }
+
+        // 退出登录
+        function logout() {
+            localStorage.removeItem('admin_token');
+            localStorage.removeItem('admin_user');
+            currentUser = null;
+            document.getElementById('loginPage').classList.remove('hidden');
+            document.getElementById('mainPage').classList.add('hidden');
+            document.getElementById('loginUsername').value = 'admin';
+            document.getElementById('loginPassword').value = 'admin123';
+            document.getElementById('loginError').style.display = 'none';
+        }
+
+        // 切换标签页
+        function switchTab(tabName) {
+            document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+            document.querySelectorAll('.tab-content').forEach(c => c.classList.add('hidden'));
+            event.target.classList.add('active');
+            document.getElementById(tabName + '-tab').classList.remove('hidden');
+            loadTabData(tabName);
+        }
+
+        // 加载标签页数据
+        function loadTabData(tabName) {
+            switch(tabName) {
+                case 'tenant': loadTenants(); break;
+                case 'user': loadUsers(); break;
+                case 'conversation': loadConversations(); break;
+                case 'plan': loadPlans(); break;
+            }
+        }
+
+        // 加载统计
+        async function loadStats() {
+            try {
+                const tenants = await fetch('/api/tenants').then(r => r.json());
+                document.getElementById('tenantCount').textContent = Array.isArray(tenants) ? tenants.length : 0;
+                document.getElementById('userCount').textContent = '-';
+                document.getElementById('conversationCount').textContent = '-';
+            } catch(e) { console.error(e); }
+        }
+
+        // 租户管理
+        async function loadTenants() {
+            try {
+                const data = await fetch('/api/tenants').then(r => r.json());
+                const tbody = document.getElementById('tenantList');
+                if (Array.isArray(data) && data.length > 0) {
+                    tbody.innerHTML = data.map(t => `
+                        <tr>
+                            <td>${t.id || t.tenant_id || '-'}</td>
+                            <td>${t.name || '-'}</td>
+                            <td>${t.type || '-'}</td>
+                            <td><span class="status status-active">正常</span></td>
+                            <td>${t.created_at || '-'}</td>
+                            <td>
+                                <button class="btn" onclick="editTenant('${t.id || t.tenant_id || ''}')">编辑</button>
+                                <button class="btn btn-danger" onclick="deleteTenant('${t.id || t.tenant_id || ''}')">删除</button>
+                            </td>
+                        </tr>
+                    `).join('');
+                } else {
+                    tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;color:#999;padding:40px;">暂无租户数据，请点击"+ 新增租户"创建</td></tr>';
+                }
+            } catch(e) { 
+                console.error(e);
+                document.getElementById('tenantList').innerHTML = '<tr><td colspan="6" style="text-align:center;color:#999;padding:40px;">暂无数据</td></tr>';
+            }
+        }
+
+        function showAddTenantForm() {
+            document.getElementById('addTenantForm').classList.remove('hidden');
+        }
+
+        function hideAddTenantForm() {
+            document.getElementById('addTenantForm').classList.add('hidden');
+        }
+
+        async function createTenant() {
+            const name = document.getElementById('tenantName').value;
+            const type = document.getElementById('tenantType').value;
+            try {
+                await fetch('/api/tenants', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({name, type})
+                });
+                hideAddTenantForm();
+                loadTenants();
+                loadStats();
+            } catch(e) { alert('创建失败：' + e.message); }
+        }
+
+        async function deleteTenant(id) {
+            if(!confirm('确定删除此租户？')) return;
+            try {
+                await fetch(`/api/tenants/${id}`, {method: 'DELETE'});
+                loadTenants();
+                loadStats();
+            } catch(e) { alert('删除失败：' + e.message); }
+        }
+
+        // 用户管理
+        async function loadUsers() {
+            try {
+                const data = await fetch('/api/users').then(r => r.json());
+                const tbody = document.getElementById('userList');
+                if (Array.isArray(data) && data.length > 0) {
+                    tbody.innerHTML = data.map(u => `
+                        <tr>
+                            <td>${u.id || '-'}</td>
+                            <td>${u.username || '-'}</td>
+                            <td>${u.role || '-'}</td>
+                            <td>${u.tenant_id || '-'}</td>
+                            <td>${u.created_at || '-'}</td>
+                            <td>
+                                <button class="btn" onclick="editUser('${u.id || ''}')">编辑</button>
+                                <button class="btn btn-danger" onclick="deleteUser('${u.id || ''}')">删除</button>
+                            </td>
+                        </tr>
+                    `).join('');
+                } else {
+                    tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;color:#999;padding:40px;">暂无用户数据</td></tr>';
+                }
+            } catch(e) { 
+                console.error(e);
+                document.getElementById('userList').innerHTML = '<tr><td colspan="6" style="text-align:center;color:#999;padding:40px;">暂无数据</td></tr>';
+            }
+        }
+
+        function showAddUserForm() {
+            document.getElementById('addUserForm').classList.remove('hidden');
+        }
+
+        function hideAddUserForm() {
+            document.getElementById('addUserForm').classList.add('hidden');
+        }
+
+        async function createUser() {
+            const username = document.getElementById('username').value;
+            const password = document.getElementById('password').value;
+            const tenant_id = document.getElementById('userTenant').value;
+            const role = document.getElementById('userRole').value;
+            try {
+                await fetch('/api/users', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({username, password, tenant_id, role})
+                });
+                hideAddUserForm();
+                loadUsers();
+            } catch(e) { alert('创建失败：' + e.message); }
+        }
+
+        // 对话管理
+        async function loadConversations() {
+            try {
+                const data = await fetch('/api/conversations').then(r => r.json());
+                const tbody = document.getElementById('conversationList');
+                if (Array.isArray(data) && data.length > 0) {
+                    tbody.innerHTML = data.slice(0, 50).map(c => `
+                        <tr>
+                            <td>${c.id || '-'}</td>
+                            <td>${c.customer_id || '-'}</td>
+                            <td>${c.message_type || '-'}</td>
+                            <td>${c.content ? c.content.substring(0, 50) + '...' : '-'}</td>
+                            <td>${c.created_at || '-'}</td>
+                        </tr>
+                    `).join('');
+                } else {
+                    tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;color:#999;padding:40px;">暂无对话数据</td></tr>';
+                }
+            } catch(e) { 
+                console.error(e);
+                document.getElementById('conversationList').innerHTML = '<tr><td colspan="5" style="text-align:center;color:#999;padding:40px;">暂无数据</td></tr>';
+            }
+        }
+
+        // AI 对话
+        function changeModel() {
+            currentModel = document.getElementById('modelSelect').value;
+            document.getElementById('currentModel').textContent = '当前：' + currentModel;
+            
+            const chatBox = document.getElementById('chatBox');
+            chatBox.innerHTML += `
+                <div class="message ai" style="background: #e6f7ff; border: 1px solid #1890ff;">
+                    <strong>系统：</strong>
+                    <p>✅ 已切换到 <strong>${currentModel}</strong> 模型</p>
+                </div>
+            `;
+            chatBox.scrollTop = chatBox.scrollHeight;
+        }
+
+        async function sendMessage() {
+            const input = document.getElementById('messageInput');
+            const message = input.value.trim();
+            if(!message) return;
+
+            const chatBox = document.getElementById('chatBox');
+            chatBox.innerHTML += `
+                <div class="message user">
+                    <strong>您：</strong>
+                    <p>${message}</p>
+                </div>
+            `;
+            input.value = '';
+            chatBox.scrollTop = chatBox.scrollHeight;
+
+            try {
+                const response = await fetch('/api/ai/test', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({
+                        message: message,
+                        model: currentModel
+                    })
+                });
+                const data = await response.json();
+                chatBox.innerHTML += `
+                    <div class="message ai">
+                        <strong>AI 客服 (${currentModel})：</strong>
+                        <p>${data.response || data.message || '...'}</p>
+                    </div>
+                `;
+                chatBox.scrollTop = chatBox.scrollHeight;
+            } catch(e) {
+                chatBox.innerHTML += `
+                    <div class="message ai">
+                        <strong>AI 客服：</strong>
+                        <p>抱歉，暂时无法响应，请稍后再试。</p>
+                    </div>
+                `;
+            }
+        }
+
+        // 套餐管理
+        async function loadPlans() {
+            document.getElementById('planList').innerHTML = '<tr><td colspan="6" style="text-align:center;color:#999;padding:40px;">功能开发中...</td></tr>';
+        }
+
+        function showAddPlanForm() {
+            alert('功能开发中...');
+        }
+
+        // 支持回车登录
+        document.addEventListener('DOMContentLoaded', function() {
+            document.getElementById('loginPassword').addEventListener('keypress', function(e) {
+                if (e.keyCode === 13) {
+                    login();
+                }
+            });
+            checkLogin();
+        });
+    </script>
+</body>
+</html>

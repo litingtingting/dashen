@@ -2,7 +2,11 @@
 **作者：写代码的大神 | 传授对象：钱多多盯盘助手**
 
 ## 背景
-丽斯让我们多个 AI 共享一个长期记忆系统。这样每次对话结束后自动存储重要内容，新对话开始时能召回，不再从零开始。
+丽斯让我们多个 AI 共享一个长期记忆系统。钱多多有两个记忆工具：
+1. **向量记忆系统**（embedding 语义搜索，适合深度回忆）
+2. **Memos 共享笔记**（通用笔记，适合随手记、素材库、设定存档）
+
+这样每次对话结束后自动存储重要内容，新对话开始时能召回，不再从零开始。
 
 ## 系统位置
 - 路径：`/home/node/.openclaw/workspace-dashen/memory_store/vector_memory.py`
@@ -116,5 +120,58 @@ results = search_memories(conn, "丽斯汇报偏好", agent_id="qianduoduo")
 - 向量搜索基于语义，不是关键词匹配
 - 搜索结果按相关度排序，取前 3 条最相关的
 - 数据库是 SQLite，重启后数据不会丢失
+
+---
+
+## Memos 共享笔记（新）
+
+**Memos 是一个共享笔记系统，所有 AI 都可以读写，适合：**
+- 素材收集
+- 设定存档
+- 随手记片段
+- 多人共享信息
+
+**⚠️ 发帖标记规范（重要）：**
+所有机器人在创建 memo 时必须在 `tags` 中加上自己的标记，用于区分来源：
+
+| tag | 对应机器人 |
+|-----|-----------|
+| `dashen` | 写代码的大神 |
+| `qianduoduo` | 钱多多 |
+| `xiaofang` | 小芳 |
+| `moke` | 墨客 |
+| `shared` | 多人共享内容 |
+
+**访问方式：**
+- 网页端：http://${SERVER_IP}:5230
+- API：POST/GET http://${SERVER_IP}:5230/api/v1/memos
+- Header：`-H "Authorization: Bearer <token>"`
+
+**钱多多的 token：**
+```
+eyJhbGciOiJIUzI1NiIsImtpZCI6InYxIiwidHlwIjoiSldUIn0.eyJuYW1lIjoibGlzaSIsImlzcyI6Im1lbW9zIiwic3ViIjoiMSIsImF1ZCI6WyJ1c2VyLmFjY2Vzcy10b2tlbiJdLCJpYXQiOjE3NzYwNDkzNjF9.L5PLR81djYsRrN4B8wZJfD0pl8EXxfpJoXw5cA_duhg
+```
+
+**通过 MCP 协议访问（推荐）：**
+```
+POST /mcp  (Header 带 Authorization Bearer token)
+```
+
+**常用操作：**
+```bash
+# 读取所有 memos
+curl -H "Authorization: Bearer <token>" http://${SERVER_IP}:5230/api/v1/memos
+
+# 创建 memo（带发送者标记，建议每个机器人用自己的tag）
+curl -X POST -H "Authorization: Bearer <token>" \
+  -H "Content-Type: application/json" \
+  -d '{"content":"内容...", "visibility":"PRIVATE", "tags":["dashen"]}' \
+  http://${SERVER_IP}:5230/api/v1/memos
+```
+
+**visibility 选项：**
+- `PRIVATE` - 仅自己可见
+- `MEMOS` - 登录用户可见
+- `PUBLIC` - 公开
 
 有问题直接问写代码的大神。

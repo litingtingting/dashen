@@ -1,0 +1,67 @@
+# 智能客服系统 - 配置文件
+# 最后更新：2026-03-19
+
+system:
+  name: 智能客服系统
+  version: 0.2.0
+  env: production
+  timezone: Asia/Shanghai
+
+server:
+  host: 0.0.0.0
+  port: 80
+  domain: localhost
+  ssl:
+    enabled: false
+
+database:
+  type: sqlite
+  sqlite:
+    path: ./data/smart-cs.db
+    wal_mode: true
+
+platforms:
+  wechat:
+    enabled: false
+    app_id: ""
+    app_secret: ""
+    token: ""
+    encoding_aes_key: ""
+  taobao:
+    enabled: false
+    app_key: ""
+    app_secret: ""
+  douyin:
+    enabled: false
+    app_id: ""
+    app_secret: ""
+
+ai:
+  provider: bailian
+  base_url: https://dashscope.aliyuncs.com/compatible-mode/v1
+  api_key: ${CUSTOMER_APIKEY}
+  model: qwen-plus
+  timeout_ms: 30000
+  filter:
+    enabled: true
+    max_response_length: 500
+
+admin:
+  super_admin:
+    tenant_id: lishi-feishu
+    username: admin
+    password_hash: ${ADMIN_PASSWORD_HASH:-admin123}
+
+log:
+  level: info
+  file: ./logs/server.log
+  max_size_mb: 100
+  max_days: 7
+
+cleanup:
+  conversation_retain_days: 7
+  schedule: "0 2 * * *"
+
+rate_limit:
+  global_qps: 10
+  per_tenant_qps: 5
