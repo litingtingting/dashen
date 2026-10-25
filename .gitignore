@@ -44,3 +44,15 @@ coverage/
 tmp/
 temp/
 .cache/
+
+# 个人工作区文件（含服务器 IP / 私有配置，禁止入库）
+/MEMORY.md
+/TOOLS.md
+/HEARTBEAT.md
+/USER.md
+/AGENTS.md
+/SOUL.md
+/IDENTITY.md
+/BOOTSTRAP.md
+/reports/
+/memory/
