@@ -16,7 +16,7 @@
 ## 环境变量
 必须设置以下环境变量才能调用百炼 embedding API：
 ```bash
-CUSTOMER_APIKEY=${CUSTOMER_APIKEY}
+CUSTOMER_APIKEY=${CUSTOMER_APIKEY}   # 见 .env（禁止写入仓库）
 CUSTOMER_BAILIAN_BASEURL=https://dashscope.aliyuncs.com/compatible-mode/v1
 ```
 
