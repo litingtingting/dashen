@@ -9,7 +9,7 @@ import (
 
 // StartCleanup 启动定时清理任务
 func StartCleanup(retainDays int) {
-	log.Printf("🕐 启动定时清理任务：保留%s天前的对话", retainDays)
+	log.Printf("🕐 启动定时清理任务：保留%d天前的对话", retainDays)
 
 	// 每天凌晨 2 点执行
 	go func() {
