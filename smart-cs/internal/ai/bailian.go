@@ -34,6 +34,17 @@ type Message struct {
 // ChatCompletionResponse OpenAI 兼容的聊天响应
 type ChatCompletionResponse struct {
 	Choices []Choice `json:"choices"`
+	Usage   Usage   `json:"usage"`
+}
+
+// Usage 百炼（OpenAI 兼容）返回的 Token 用量
+type Usage struct {
+	PromptTokens     int `json:"prompt_tokens"`
+	CompletionTokens int `json:"completion_tokens"`
+	TotalTokens      int `json:"total_tokens"`
+	PromptTokensDetails struct {
+		CachedTokens int `json:"cached_tokens"`
+	} `json:"prompt_tokens_details"`
 }
 
 // Choice 选择结构
@@ -95,6 +106,7 @@ func (c *BailianClient) Chat(prompt string, persona Persona) (string, error) {
 		Timeout: c.Timeout,
 	}
 
+	start := time.Now()
 	resp, err := client.Do(req)
 	if err != nil {
 		return "", err
@@ -111,6 +123,13 @@ func (c *BailianClient) Chat(prompt string, persona Persona) (string, error) {
 	fmt.Printf("[DEBUG] API Response Status: %d\n", resp.StatusCode)
 	fmt.Printf("[DEBUG] API Response Body: %s\n", string(body))
 
+	// 埋点：无论成功失败都记录 Token 用量（失败时 usage 为空/0，便于统计失败调用次数）
+	var usageProbe struct {
+		Usage Usage `json:"usage"`
+	}
+	_ = json.Unmarshal(body, &usageProbe)
+	logUsage(c.Model, resp.StatusCode, usageProbe.Usage, time.Since(start))
+
 	// 检查 HTTP 状态码
 	if resp.StatusCode != http.StatusOK {
 		return "", fmt.Errorf("API request failed with status %d: %s", resp.StatusCode, string(body))
@@ -122,11 +141,30 @@ func (c *BailianClient) Chat(prompt string, persona Persona) (string, error) {
 		return "", fmt.Errorf("failed to parse response: %v, body: %s", err, string(body))
 	}
 
+	// 埋点：输出结构化的 Token 用量行，供 ai_token_stats.py 统计真实 AI 成本
+
 	if len(completionResp.Choices) == 0 {
 		return "", fmt.Errorf("no choices in response")
 	}
 
 	return completionResp.Choices[0].Message.Content, nil
+}
+
+// logUsage 输出一行结构化的 Token 用量埋点。
+// 格式：[BAILIAN_USAGE] <RFC3339毫秒> model=... status=... prompt_tokens=... completion_tokens=... total_tokens=... cached_tokens=... latency_ms=...
+// 该行是 scripts/ai_token_stats.py 的唯一数据源，请勿随意更改格式。
+func logUsage(model string, status int, u Usage, elapsed time.Duration) {
+	fmt.Printf(
+		"[BAILIAN_USAGE] %s model=%s status=%d prompt_tokens=%d completion_tokens=%d total_tokens=%d cached_tokens=%d latency_ms=%d\n",
+		time.Now().Format("2006-01-02T15:04:05.000"),
+		model,
+		status,
+		u.PromptTokens,
+		u.CompletionTokens,
+		u.TotalTokens,
+		u.PromptTokensDetails.CachedTokens,
+		elapsed.Milliseconds(),
+	)
 }
 
 // buildSystemPrompt 构建系统提示词（人设）
