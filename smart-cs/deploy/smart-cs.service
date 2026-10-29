@@ -1,0 +1,25 @@
+[Unit]
+Description=smart-cs 智能客服系统 API 服务
+Documentation=file:///home/ubuntu/smart-cs/README.md
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+# 80 端口在容器/主机上属特权端口（ip_unprivileged_port_start=1024），故以 root 运行；
+# 应用自身通过 godotenv 从 WorkingDirectory 下的 .env 读取 BAILIAN_API_KEY 等敏感配置。
+User=root
+WorkingDirectory=/home/ubuntu/smart-cs
+ExecStart=/home/ubuntu/smart-cs/bin/smart-cs-v2 -config configs/config.yml -env=true
+Restart=always
+RestartSec=5
+StartLimitBurst=5
+StartLimitIntervalSec=60
+# 追加写入而非截断，保证 scripts/api_stats.py / ai_token_stats.py 的历史日志解析不断链
+StandardOutput=append:/home/ubuntu/smart-cs/logs/server-v2.log
+StandardError=append:/home/ubuntu/smart-cs/logs/server-v2.log
+Environment=TZ=Asia/Shanghai
+LimitNOFILE=65535
+
+[Install]
+WantedBy=multi-user.target
