@@ -41,6 +41,20 @@ func createConversation(c *gin.Context) {
 		return
 	}
 
+	// 租户隔离：请求里的 tenant_id 必须与当前身份一致
+	tc := TenantCtx(c)
+	if tc == nil {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "缺少认证凭证"})
+		return
+	}
+	if req.TenantID == "" {
+		req.TenantID = tc.TenantID
+	}
+	if req.TenantID != tc.TenantID && !tc.IsSuperAdmin() {
+		c.JSON(http.StatusForbidden, gin.H{"error": "无权代表其他租户发起对话"})
+		return
+	}
+
 	// 验证租户是否存在
 	var tenantExists int
 	err := db.DB.QueryRow(`SELECT COUNT(*) FROM tenants WHERE id = ? AND status = 1`, req.TenantID).Scan(&tenantExists)
@@ -83,30 +97,30 @@ func createConversation(c *gin.Context) {
 		return
 	}
 
-	// 更新使用量统计
-	today := time.Now().Format("2006-01-02")
-	_, err = db.DB.Exec(`INSERT INTO usage_stats (id, tenant_id, date, message_count, ai_call_count) 
-		VALUES (?, ?, ?, ?, ?)
-		ON CONFLICT(tenant_id, date) DO UPDATE SET message_count = message_count + 1, ai_call_count = ai_call_count + 1`,
-		uuid.New().String(), req.TenantID, today, 1, 1)
-	if err != nil {
-		// 非致命错误，继续
-	}
+	// 更新使用量统计（配额计量）
+	incrementUsage(req.TenantID, 1, 1)
 
 	c.JSON(http.StatusOK, gin.H{
 		"conversation_id": conversationID,
 		"response":        processedResponse,
+		"quota":           CheckQuota(req.TenantID),
 	})
 }
 
-// listConversations 列出对话
+// listConversations 列出对话（仅本租户）
 func listConversations(c *gin.Context) {
-	tenantID := c.Query("tenant_id")
+	scope, ok := TenantScope(c, c.Query("tenant_id"))
+	if !ok {
+		return
+	}
+	if scope == "" {
+		scope = TenantCtx(c).TenantID
+	}
 	limit := c.DefaultQuery("limit", "20")
 
-	rows, err := db.DB.Query(`SELECT id, tenant_id, customer_id, customer_info, message_type, content, ai_response, filtered, created_at 
+	rows, err := db.DB.Query(`SELECT id, tenant_id, customer_id, customer_info, message_type, content, ai_response, filtered, created_at
 		FROM conversations WHERE tenant_id = ? ORDER BY created_at DESC LIMIT ?`,
-		tenantID, limit)
+		scope, limit)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
@@ -127,7 +141,7 @@ func listConversations(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"conversations": conversations})
 }
 
-// getConversation 获取单条对话
+// getConversation 获取单条对话（仅本租户）
 func getConversation(c *gin.Context) {
 	id := c.Param("id")
 
@@ -138,6 +152,13 @@ func getConversation(c *gin.Context) {
 		&conv.MessageType, &conv.Content, &conv.AIResponse, &conv.Filtered, &conv.CreatedAt)
 	if err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": "对话不存在"})
+		return
+	}
+
+	// 租户隔离：非超管不能读他人对话
+	tc := TenantCtx(c)
+	if tc != nil && !tc.IsSuperAdmin() && conv.TenantID != tc.TenantID {
+		c.JSON(http.StatusForbidden, gin.H{"error": "无权访问其他租户的对话"})
 		return
 	}
 

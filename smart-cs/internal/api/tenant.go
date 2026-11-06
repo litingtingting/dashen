@@ -80,6 +80,11 @@ func createTenant(c *gin.Context) {
 func getTenant(c *gin.Context) {
 	id := c.Param("id")
 
+	// 租户隔离：非超管只能看自己的租户
+	if _, ok := TenantScope(c, id); !ok {
+		return
+	}
+
 	var row tenantRow
 	err := db.DB.QueryRow(`SELECT `+tenantColumns+` FROM tenants WHERE id = ?`, id).Scan(
 		&row.ID, &row.Name, &row.Type, &row.PlatformID,
@@ -99,6 +104,11 @@ func getTenant(c *gin.Context) {
 // updateTenant 更新租户
 func updateTenant(c *gin.Context) {
 	id := c.Param("id")
+
+	// 租户隔离：非超管只能改自己的租户
+	if _, ok := TenantScope(c, id); !ok {
+		return
+	}
 
 	var req Tenant
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -125,6 +135,11 @@ func updateTenant(c *gin.Context) {
 func deleteTenant(c *gin.Context) {
 	id := c.Param("id")
 
+	// 租户隔离：非超管不能删
+	if _, ok := TenantScope(c, id); !ok {
+		return
+	}
+
 	res, err := db.DB.Exec(`DELETE FROM tenants WHERE id = ?`, id)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
@@ -138,9 +153,22 @@ func deleteTenant(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"message": "租户删除成功"})
 }
 
-// listTenants 列出所有租户
+// listTenants 列出租户（超管看全部，普通用户只看自己）
 func listTenants(c *gin.Context) {
-	rows, err := db.DB.Query(`SELECT ` + tenantColumns + ` FROM tenants ORDER BY created_at DESC`)
+	scope, ok := TenantScope(c, "")
+	if !ok {
+		return
+	}
+
+	query := `SELECT ` + tenantColumns + ` FROM tenants`
+	var args []any
+	if scope != "" {
+		query += ` WHERE id = ?`
+		args = append(args, scope)
+	}
+	query += ` ORDER BY created_at DESC`
+
+	rows, err := db.DB.Query(query, args...)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
